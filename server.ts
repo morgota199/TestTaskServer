@@ -5,7 +5,7 @@ import * as multer from "multer";
 import Autos from "./autos";
 
 const app = express(),
-      port:number = 3001,
+      port:number = 3000,
       secretKey:string = "qwerty";
 
 let element:number = 0,
@@ -128,27 +128,28 @@ app.post("/autos", async (req: any, res: any) => {
         for(let i = 0; i < req.files.length; i++){
             fileData = req.files[i];
             if(fileData) {
-                await SendToBase();
+                let jsonData = await JSON.parse(fs.readFileSync(`./${fileData.path}`, 'utf-8')),
+                    iter:number = 0;
+
+                await(async function WrireToBase(){
+                    if(iter < jsonData.length){
+                        let auto = new Autos({...jsonData[iter], check: null});
+                        await auto.save();
+                        iter += 1;
+                        setTimeout(WrireToBase, 2);
+                    } else {
+                        await fs.unlinkSync(`./${fileData.path}`);
+                        await res.sendStatus(200);
+                    }
+                })();
             } else {
                 await res.sendStatus(404);
             }
         }
-        await res.sendStatus(200);
     } else {
         await res.sendStatus(401);
     }
 });
-
-async function SendToBase(){
-    let jsonData = await JSON.parse(fs.readFileSync(`./${fileData.path}`, 'utf-8'));
-
-    for(let i of jsonData){
-            let auto = new Autos({...i, check: null});
-            await auto.save();
-    }
-
-    await fs.unlinkSync(`./${fileData.path}`);
-}
 
 app.listen(port, () => {
     console.log(`Server started at http://localhost:${ port }`);
